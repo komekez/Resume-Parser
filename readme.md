@@ -6,6 +6,12 @@
     ```
     pip3 install lib_name
     ```
+ 4. Once the application runs successfully, test the project by running the following link on browser
+    http://localhost:9090/
+ 5. If 'Hello World' is displayed than the application is running successfully
+
+
+### Postman
 
 PyPDF2.errors.DeprecationError: PdfFileReader is deprecated and was removed in PyPDF2 3.0.0. Use PdfReader instead.
 

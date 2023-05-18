@@ -25,9 +25,6 @@ from flair.data import Sentence
 from flair.models import SequenceTagger
 from nltk.corpus import wordnet as wn
 import nltk
-from collections import defaultdict
-
-
 
 ## Changes done in this version - Sped up version to run in 1-2 seconds on average
 
@@ -42,6 +39,16 @@ def test():
 glove = spacy.load('en_core_web_lg')
 tagger = SequenceTagger.load("flair/ner-english-fast")
 finder = Finder()
+
+stopwords = ["SUMMARY",'PROFILE', 'EDUCATION','EXPERIENCE', 'EMPLOYMENT',
+             'CERTIFICATES','AWARDS', 'CERTIFICATIONS','ACTIVITIES',
+              'CURRICULAR',"PROJECTS","SKILLS","CERTIFICATE" , 
+              "MISCELLANEOUS","COMPETENCIES", "RESEARCH EXPERIENCE",
+              "SKILL SET", "LEADERSHIP & ACTIVITES","PROJECT EXPERIENCE",
+              "ACHIEVEMENTS","POSITION OF RESPONSIBILITY",'AWARDS','INTERESTS',
+              'EMPLOYER I','PROJECT EXPERIENCE','PERSONAL DETAILS',
+              'ACADEMIC PERFORMANCE','ACADEMIC PROJECT','INTERNSHIP', 'WORK EXPERIENCE',
+              'PERSONAL INTERESTS']
 
 @application.route('/getParsedData', methods=['POST'])
 def getParsedData():
@@ -209,26 +216,19 @@ def getParsedData():
 def get_skills(document):
     labels = ['SKILLS', 'TECHNICAL SKILLS', 'COMPUTER PROFICIENCY', 'PROFICIENCY', 'SOFT SKILLS']
     skills = list()
-    skills_dict = dict()
     skill_flag = False
+
     for data in document:
-        if(data.isupper() and (data.casefold() in labels or data.upper() in labels)):
+        if data[0].isupper() and (any(data.upper().strip() == word for word in labels)) and (len(data.strip().split(' '))<6 or (data.find(':')!=-1 and len(data[:data.find(':')].strip().split(' '))<6)):
             skill_flag = True
-            continue
 
         elif(skill_flag):
-            skills.append(data.split(' '))
-        
-        if(data.isupper() and (data.casefold() not in labels or data.upper() not in labels)):
-            skill_flag = False
-            continue
+            if (data.strip()[0].isupper() and any(word in data.upper() for word in stopwords)) or data == '': 
+                break
+            skills.append(data)
 
-    skills = skills[:len(skills)-1]
+    return skills
 
-    for i in skills:
-        skills_dict[i[0]] = i[1:]
-
-    return skills_dict
 
 def get_academic_project(document):
     labels = ['PROJECT', 'ACADEMIC PROJECT', 'PROJECTS', 'ASSIGNMENT']
@@ -240,13 +240,11 @@ def get_academic_project(document):
             continue
 
         elif(project_flag):
+            if(data.upper() in stopwords or data in stopwords):
+                break
             project.append(data)
-        
-        if(data.isupper() and data not in labels):
-            project_flag = False
-            continue
-
     return project
+
 
 def get_languages(document):
     labels = ['Languages', 'LANGUAGES']
@@ -258,19 +256,14 @@ def get_languages(document):
             continue
 
         elif(lang_flag):
+            if(data in stopwords or data.upper() in stopwords):
+                break
             lang.append(data)
-
-        if(data not in labels):
-            lang_flag = False
-            continue
-
     return lang
-
 
 
 def remove_non_ascii(string):
     return string.encode('ascii', errors='ignore').decode()
-
 
 
 def open_docx_file(file_name,nlp):
@@ -404,6 +397,7 @@ def get_top_coordinates(page):
         return 120
 
     return int(start*page.height)
+
 
 def check_bboxes(word, table_bbox):
     """
@@ -542,8 +536,6 @@ def pdf_non_table(file, nlp):
         return (result,names[0].split() if len(result)>0 and len(names)>0 else [])
 
 
-
-
 def open_pdf(file,nlp):
     #A function to scrape the text from a pdf, first checking if a pdf contains tables and if it does, it processes the text using pdfplumber such that
     # the format becomes {header:cell}. If it does not contain tables, it just parses the pdf using pdfplumber. The name is then extracted from the text.
@@ -559,6 +551,7 @@ def open_pdf(file,nlp):
         return pdf_table(file, nlp)
     else:
         return pdf_non_table(file, nlp)
+
 
 def open_doc_file(file_name,nlp):
     # A function to open and extract the text and name from a doc file.
@@ -576,9 +569,6 @@ def open_doc_file(file_name,nlp):
     return (text,names[0].split() if len(names)>0 else [])
 
 
-
-
-
 def get_email(document):
     # A function to extract a email from the text of a resume using regex
     emails = []
@@ -590,8 +580,6 @@ def get_email(document):
             if len(mat) > 0:
                 emails.append(mat)
     return (emails)
-
-
 
 
 def get_phone_no(document):
@@ -607,16 +595,6 @@ def get_phone_no(document):
                 matches.append(mat)
 
     return (matches)
-
-stopwords = ["SUMMARY",'PROFILE', 'EDUCATION','EXPERIENCE', 'EMPLOYMENT',
-             'CERTIFICATES','AWARDS', 'CERTIFICATIONS','ACTIVITIES',
-              'CURRICULAR',"PROJECTS","SKILLS","CERTIFICATE" , 
-              "MISCELLANEOUS","COMPETENCIES", "RESEARCH EXPERIENCE",
-              "SKILL SET", "LEADERSHIP & ACTIVITES","PROJECT EXPERIENCE",
-              "ACHIEVEMENTS","POSITION OF RESPONSIBILITY",'AWARDS','INTERESTS',
-              'EMPLOYER I','PROJECT EXPERIENCE','PERSONAL DETAILS',
-              'ACADEMIC PERFORMANCE','ACADEMIC PROJECT','INTERNSHIP']
-              
 
 
 def get_summary(document):
@@ -685,8 +663,6 @@ def get_university(document):
 
     return (uni)
 
-
-
 def get_experience(document):
     # A function to find the experience section of a resume and scrape the text from the section.
     experience = []
@@ -709,7 +685,6 @@ def get_experience(document):
             exp_summary += line
             experience[-1].append(line)
     return(experience)
-
 
 def find_url_pdf(file):
 
@@ -738,7 +713,6 @@ def find_url_pdf(file):
     except:
         print("Something went wrong")
         return []
-
 
 def find_url_docx(file):
     # A function to find the links located in a docx
@@ -1224,10 +1198,6 @@ def getEduInfo(education):
                     courses.append(line)
 
     return degrees,dates,courses,accolades,majors
-
-
-
-
 
 
 
